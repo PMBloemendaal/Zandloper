@@ -18,7 +18,8 @@
 #define PIN_X A1
 #define PIN_Y A2
 
-#define PIN_BUZZER 14
+#define PIN_BUZZER 8
+#define PIN_BUTTON 2
 
 // This takes into account how the matrixes are mounted
 #define ROTATION_OFFSET 90
@@ -29,23 +30,28 @@
 
 #define MODE_HOURGLASS 0
 
-int delaySeconds = 1000;
-byte delayHours = 0;
-byte delayMinutes = 1;
+// 1000 miliseconde per zandkorrel. Er zijn er 60 = 60 seconden
+int delaySeconds = 200;
+
 int mode = MODE_HOURGLASS;
 int gravity;
+int particlesTop ;
+int particlesBottom = 0;
+
+bool moved = false ;
+bool dropped = false ;
+
 LedControl lc = LedControl(PIN_DATAIN, PIN_CLK, PIN_LOAD, 2);
 NonBlockDelay d;
 int resetCounter = 0;
 bool alarmWentOff = false;
-
+int sensorVal = 0;
 /**
  * Get delay between particle drops (in seconds)
  */
 long getDelayDrop()
 {
     return delaySeconds;
-    return delayMinutes + (delayHours * 60);
 }
 
 #if DEBUG_OUTPUT
@@ -358,10 +364,20 @@ boolean dropParticle()
 
 void alarm()
 {
-    for (int i = 0; i < 5; i++)
+    Serial.println("Alarm!");
+    for (int i = 0; i < 10; i++)
     {
-        tone(PIN_BUZZER, 440, 200);
-        delay(1000);
+        tone(PIN_BUZZER, 600 - (20*i), 110);
+        delay(180);
+    }
+}
+void alarmStartup()
+{
+    Serial.println("Starting sound!");
+    for (int i = 0; i < 10; i++)
+    {
+        tone(PIN_BUZZER, 440 + (20 * i), 110);
+        delay(20);
     }
 }
 
@@ -370,9 +386,11 @@ void alarm()
  */
 void setup()
 {
+    pinMode(PIN_BUTTON, INPUT_PULLUP); // Activeert de interne weerstand
+
     Serial.begin(9600);
     Serial.println("Starting Zandloper");
-
+    alarmStartup() ;
     randomSeed(analogRead(A0));
 
     for (byte i = 0; i < 2; i++)
@@ -384,6 +402,17 @@ void setup()
     resetTime();
 }
 
+void setupZandloper()
+{
+    Serial.println("Setting up Zandloper");
+    while (true)
+    {
+        /* code */
+        yield() ;
+    }
+    
+}
+
 /**
  * Main loop
  */
@@ -392,21 +421,31 @@ void loop()
     delay(DELAY_FRAME);
 
     gravity = getGravity();
-    //   Serial.print("Gravity: ");
-    //   Serial.println(gravity);
+
     if (gravity != -1)
         lc.setRotation((ROTATION_OFFSET + gravity) % 360);
 
-    bool moved = updateMatrix();
-    bool dropped = dropParticle();
 
-    if (!moved && !dropped && !alarmWentOff && (countParticles(getTopMatrix()) == 0))
+    moved = updateMatrix();
+    dropped = dropParticle();
+
+    particlesTop = countParticles(getTopMatrix());
+    particlesBottom = countParticles(getBottomMatrix());
+
+    if (!moved && !dropped && !alarmWentOff && ((particlesTop == 60 && gravity == 0) || (particlesBottom == 60 && gravity == 180)))
     {
         alarmWentOff = true;
         alarm();
     }
+    
     if (dropped)
     {
         alarmWentOff = false;
     }
+
+    sensorVal = digitalRead(PIN_BUTTON);
+    if (sensorVal == LOW) {
+        setupZandloper() ;
+    }
+    
 }
