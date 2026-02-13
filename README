@@ -1,0 +1,92 @@
+This is a professional and clear `README.md` for your GitHub repository, based on the provided code and specifications.
+
+---
+
+# Arduino Digital Hourglass
+
+An interactive digital hourglass using two 8x8 LED matrices, an accelerometer, and a buzzer. Users can set various time modes via a physical button.
+
+## 📄 About this Project
+
+This project simulates the mechanics of a traditional hourglass. By tilting the device (detected via the ADXL335 accelerometer), digital "sand grains" fall from the top matrix to the bottom one. When the time is up, an alarm sounds.
+
+### Copyright & Credits
+
+* **Original Author:** EDISON SCIENCE CORNER
+* **Modifications & Optimization:** P.M. Bloemendaal
+* **Copyright:** © 2026
+
+---
+
+## 🚀 Features
+
+* **Dynamic Gravity:** Particles react to the physical orientation of the sensor.
+* **Adjustable Timers:** Choose between 30s, 60s, 120s, 300s (5m), or 600s (10m).
+* **Setup Mode:** An interactive menu to adjust the time with visual feedback (pulsing brightness).
+* **Audio Feedback:** Buzzer sounds when particles drop and a distinct alarm upon completion.
+* **Accurate Timing:** Uses `unsigned long` calculations to prevent integer overflows.
+
+---
+
+## 🛠 Hardware Specifications
+
+| Component | Pin (Arduino) |
+| --- | --- |
+| **LED Matrix DataIn** | 5 |
+| **LED Matrix CLK** | 4 |
+| **LED Matrix LOAD** | 6 |
+| **Accelerometer X-axis** | A1 |
+| **Accelerometer Y-axis** | A2 |
+| **Buzzer** | 8 |
+| **Push Button** | 2 |
+
+---
+
+## 🕹 Instructions for Use
+
+### Setting the Time (Setup Mode)
+
+1. Press the button to enter the setup mode.
+2. The current mode will be displayed on the matrices (e.g., `30`, `60`, or minutes followed by an accent mark).
+3. **Short Press:** Cycles through the available time modes ( seconds).
+4. **Long Press (1 sec):** Confirms the selection and starts/resets the hourglass.
+
+### Operation
+
+* Tilt the hourglass 180 degrees to make the particles fall.
+* Once all 60 particles have moved to the bottom matrix, the alarm will trigger.
+
+---
+
+## 💻 Installation & Libraries
+
+Ensure the following libraries are installed in your Arduino IDE:
+
+* `LedControl` - To drive the MAX7219 matrices.
+* `NonBlockDelay` - For efficient timing without pausing the code execution.
+* `Cijfers.h` & `Delay.h` - Included header files for character rendering and logic.
+
+### Important Code Fix
+
+In this 2026 version, the particle delay calculation has been corrected to:
+
+```cpp
+delaySeconds = (1000L * modes[currentMode]) / 60;
+
+```
+
+This prevents the negative `-92` error value that occurs due to standard 16-bit integer overflows on Arduino Uno/Nano boards.
+
+---
+
+## 📂 File Structure
+
+* `Zandloper.ino`: Main file containing the logic and state machine.
+* `Cijfers.h`: Contains bit-mapping for displaying numbers on the 8x8 matrix.
+* `Delay.h`: Non-blocking delay implementation.
+
+---
+
+**Interested in contributing or found a bug?** Feel free to open an issue or submit a pull request!
+
+Would you like me to add a section on how to calibrate the accelerometer thresholds in the README?

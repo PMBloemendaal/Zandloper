@@ -1,6 +1,7 @@
 #include "Arduino.h"
 #include "LedControl.h"
 #include "Delay.h"
+#include "Cijfers.h"
 
 #define MATRIX_A 0
 #define MATRIX_B 1
@@ -26,58 +27,38 @@
 
 #define DELAY_FRAME 100
 
-#define DEBUG_OUTPUT 1
-
 #define MODE_HOURGLASS 0
 
-// 1000 miliseconde per zandkorrel. Er zijn er 60 = 60 seconden
-int delaySeconds = 200;
+#define SETUPEXIT 1000 // 1 seconde button indrukken om setup te verlaten
+#define BUTTONDELAY 300 // 100 miliseconde per button delay. 
+#define BUTTONMARGIN 250
 
-int mode = MODE_HOURGLASS;
+// miliseconde per zandkorrel. Er zijn er 60 
+long delaySeconds;
+
+// De voldende tijden zijn beschikbaar: 30 seconden, 60 seconden, 120 seconden, 300 seconden (5 minuten) en 600 seconden (10 minuten)
+int modes[] = {30, 60, 120, 300, 600};
+int currentMode = 1; //  Start met de eerste mode = 60 sectonden
+
+// OBSOLETE int mode = MODE_HOURGLASS;
 int gravity;
-int particlesTop ;
+int particlesTop;
 int particlesBottom = 0;
 
-bool moved = false ;
-bool dropped = false ;
+bool moved = false;
+bool dropped = false;
 
 LedControl lc = LedControl(PIN_DATAIN, PIN_CLK, PIN_LOAD, 2);
 NonBlockDelay d;
-int resetCounter = 0;
-bool alarmWentOff = false;
-int sensorVal = 0;
-/**
- * Get delay between particle drops (in seconds)
- */
+// OBSOLUTE int resetCounter = 0;
+bool alarmWentOff = true;
+
+
 long getDelayDrop()
 {
+    // Get delay between particle drops (in seconds)
     return delaySeconds;
 }
-
-#if DEBUG_OUTPUT
-void printmatrix()
-{
-    Serial.println(" 0123-4567 ");
-    for (int y = 0; y < 8; y++)
-    {
-        if (y == 4)
-        {
-            Serial.println("|----|----|");
-        }
-        Serial.print(y);
-        for (int x = 0; x < 8; x++)
-        {
-            if (x == 4)
-            {
-                Serial.print("|");
-            }
-            Serial.print(lc.getXY(0, x, y) ? "X" : " ");
-        }
-        Serial.println("|");
-    }
-    Serial.println("-----------");
-}
-#endif
 
 coord getDown(int x, int y)
 {
@@ -294,7 +275,6 @@ int getGravity()
     // --------------------------------------------------
     return -1;
 }
-
 int getTopMatrix()
 {
     return (getGravity() == 90) ? MATRIX_A : MATRIX_B;
@@ -307,14 +287,18 @@ int getBottomMatrix()
 void resetTime()
 {
     for (byte i = 0; i < 2; i++)
-    {
         lc.clearDisplay(i);
-    }
     fill(getTopMatrix(), 60);
     d.Delay(getDelayDrop() * 0);
     d.Delay(1000);
-}
 
+    delaySeconds = (1000L * modes[currentMode]) / 60; // 1000 miliseconde per seconde, gedeeld door 60 zandkorrels
+    Serial.print("Current mode: ");
+    Serial.println(modes[currentMode]); 
+    Serial.print("Delay per particle: ");
+    Serial.println(delaySeconds); 
+
+}
 bool updateMatrix()
 {
     int n = 8;
@@ -341,12 +325,11 @@ bool updateMatrix()
     }
     return somethingMoved;
 }
-
 boolean dropParticle()
 {
     if (d.Timeout())
     {
-        d.Delay(getDelayDrop() );
+        d.Delay(getDelayDrop());
         if (gravity == 0 || gravity == 180)
         {
             if ((lc.getRawXY(MATRIX_A, 0, 0) && !lc.getRawXY(MATRIX_B, 7, 7)) ||
@@ -361,13 +344,12 @@ boolean dropParticle()
     }
     return false;
 }
-
 void alarm()
 {
     Serial.println("Alarm!");
     for (int i = 0; i < 10; i++)
     {
-        tone(PIN_BUZZER, 600 - (20*i), 110);
+        tone(PIN_BUZZER, 600 - (20 * i), 110);
         delay(180);
     }
 }
@@ -390,27 +372,130 @@ void setup()
 
     Serial.begin(9600);
     Serial.println("Starting Zandloper");
-    alarmStartup() ;
+    alarmStartup();
     randomSeed(analogRead(A0));
 
     for (byte i = 0; i < 2; i++)
     {
         lc.shutdown(i, false);
         lc.setIntensity(i, 1);
+        lc.clearDisplay(i);
     }
 
     resetTime();
 }
+// Functie om een getal te splitsen en te tonen
+void toonGetal(int getal)
+{
+    int tiental = getal / 10;
+    int eenheid = getal % 10;
+
+    for (int i = 0; i < 8; i++)
+    {
+        // Tiental op display 0, eenheid op display 1
+        lc.setRow(1, i, cijfers[tiental][i]);
+        lc.setRow(0, i, cijfers[eenheid][i]);
+    }
+}
+void displayMode(int mode)
+{
+
+    if (mode <= 1)
+    { // 30 of 60 seconden
+        int tiental = modes[mode] / 10;
+        int eenheid = modes[mode] % 10;
+
+        for (int i = 0; i < 8; i++)
+        {
+            // Tiental op display 0, eenheid op display 1
+            lc.setRow(1, i, cijfers[tiental][i]);
+            lc.setRow(0, i, cijfers[eenheid][i]);
+        }
+    }
+    else
+    { // 2, 5 of 10 minuten = > 1 minuut
+        int minutes = modes[mode] / 60;
+
+        int tiental = minutes;
+        // int eenheid = modes[mode] % 10;
+
+        for (int i = 0; i < 8; i++)
+        {
+            // Tiental op display 0, eenheid op display 1
+            if (minutes < 10)
+            { // 2 of 5 minuten = 1 minuut met " teken erachter
+                lc.setRow(1, i, cijfers[tiental][i]);
+                lc.setRow(0, i, cijfers[ACCENT][i]); // " teken
+            }
+            else
+            { // 10 minuten = 1 met " teken erachter
+                lc.setRow(1, i, cijfers[CIJFER_1][i]);
+                lc.setRow(0, i, cijfers[CIJFER_0ACCENT][i]); // 0 met " teken erachter
+            }
+        }
+    }
+}
+
+// Functie om de button delay te meten. Geeft terug hoe lang er op de knop werd gedrukt in miliseconden. De functie wacht tot de button wordt losgelaten voordat hij de tijd teruggeeft.
+long getButtonDelay()
+{
+    long buttonDelay = millis();
+
+    while (digitalRead(PIN_BUTTON) == LOW  && (millis() - buttonDelay) < SETUPEXIT)
+    {
+        // Wacht tot de button wordt losgelaten
+        yield(); // Laat andere taken toe terwijl we wachten
+    }
+    for (byte i = 0; i < 2; i++)
+        lc.clearDisplay(i);
+    while (digitalRead(PIN_BUTTON) == LOW)
+    {
+        // Wacht tot de button wordt ingedrukt
+        yield(); // Laat andere taken toe terwijl we wachten
+    }   
+    return millis() - buttonDelay;
+}
 
 void setupZandloper()
 {
-    Serial.println("Setting up Zandloper");
-    while (true)
+    // We komen van een sensor LOW en wachten tot deze HIGH wordt. Dit voorkomt dat we direct weer terug gaan naar de setup als we al in de setup zitten.
+    while (digitalRead(PIN_BUTTON) == LOW)
     {
-        /* code */
-        yield() ;
+        yield(); // Laat andere taken toe terwijl we wachten
     }
-    
+    Serial.println("Setting up Zandloper");
+
+    bool blnSetupMode = true;
+
+    while (blnSetupMode)
+    {
+        int milisPerMode = (millis() / 30) % 20;
+        if (milisPerMode >= 10) 
+            milisPerMode = 19 - milisPerMode; 
+
+
+        lc.setIntensity(0, milisPerMode);
+        lc.setIntensity(1, milisPerMode);
+
+        displayMode(currentMode); 
+        long buttonDelay = getButtonDelay() ;
+
+        if (buttonDelay> SETUPEXIT)
+            blnSetupMode = false ;
+
+        // Check of de button delay binnen de marge van de button delay ligt. Zo ja, ga naar de volgende mode.
+        if (buttonDelay >= BUTTONDELAY - BUTTONMARGIN && buttonDelay <= BUTTONDELAY + BUTTONMARGIN)
+        {
+            currentMode++;
+            if (currentMode >= sizeof(modes) / sizeof(modes[0]))
+                currentMode = 0;
+        }
+    }
+
+    // De instelling is nu gedaan
+    resetTime();
+    alarmWentOff = true ;
+
 }
 
 /**
@@ -425,7 +510,6 @@ void loop()
     if (gravity != -1)
         lc.setRotation((ROTATION_OFFSET + gravity) % 360);
 
-
     moved = updateMatrix();
     dropped = dropParticle();
 
@@ -437,15 +521,15 @@ void loop()
         alarmWentOff = true;
         alarm();
     }
-    
+
     if (dropped)
     {
         alarmWentOff = false;
     }
 
-    sensorVal = digitalRead(PIN_BUTTON);
-    if (sensorVal == LOW) {
-        setupZandloper() ;
+
+    if (digitalRead(PIN_BUTTON) == LOW)
+    {
+        setupZandloper();
     }
-    
 }
