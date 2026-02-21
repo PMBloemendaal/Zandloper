@@ -29,11 +29,11 @@
 
 #define MODE_HOURGLASS 0
 
-#define SETUPEXIT 1000 // 1 seconde button indrukken om setup te verlaten
-#define BUTTONDELAY 300 // 100 miliseconde per button delay. 
+#define SETUPEXIT 1000  // 1 seconde button indrukken om setup te verlaten
+#define BUTTONDELAY 300 // 100 miliseconde per button delay.
 #define BUTTONMARGIN 250
 
-// miliseconde per zandkorrel. Er zijn er 60 
+// miliseconde per zandkorrel. Er zijn er 60
 long delaySeconds;
 
 // De voldende tijden zijn beschikbaar: 30 seconden, 60 seconden, 120 seconden, 300 seconden (5 minuten) en 600 seconden (10 minuten)
@@ -52,7 +52,6 @@ LedControl lc = LedControl(PIN_DATAIN, PIN_CLK, PIN_LOAD, 2);
 NonBlockDelay d;
 // OBSOLUTE int resetCounter = 0;
 bool alarmWentOff = true;
-
 
 long getDelayDrop()
 {
@@ -253,21 +252,25 @@ int getGravity()
     // Bepaal de richting op basis van xCalc en yCalc
     // Alleen de vier hoofdassen worden herkend
     // --------------------------------------------------
+    // Serial.print("xCalc: ");
+    // Serial.print(xCalc);
+    // Serial.print(" | yCalc: ");
+    // Serial.println(yCalc);
+    if (xCalc == -1 && yCalc == 0)
+    {
+        return 0; // Omlaag
+    }
     if (xCalc == 1 && yCalc == 0)
     {
-        return 0; // rechts
+        return 180; // omhoog
     }
     if (xCalc == 0 && yCalc == 1)
     {
-        return 90; // omhoog
-    }
-    if (xCalc == -1 && yCalc == 0)
-    {
-        return 180; // links
+        return 90; // links
     }
     if (xCalc == 0 && yCalc == -1)
     {
-        return 270; // omlaag
+        return 270; // rechts
     }
 
     // --------------------------------------------------
@@ -294,10 +297,9 @@ void resetTime()
 
     delaySeconds = (1000L * modes[currentMode]) / 60; // 1000 miliseconde per seconde, gedeeld door 60 zandkorrels
     Serial.print("Current mode: ");
-    Serial.println(modes[currentMode]); 
+    Serial.println(modes[currentMode]);
     Serial.print("Delay per particle: ");
-    Serial.println(delaySeconds); 
-
+    Serial.println(delaySeconds);
 }
 bool updateMatrix()
 {
@@ -441,7 +443,7 @@ long getButtonDelay()
 {
     long buttonDelay = millis();
 
-    while (digitalRead(PIN_BUTTON) == LOW  && (millis() - buttonDelay) < SETUPEXIT)
+    while (digitalRead(PIN_BUTTON) == LOW && (millis() - buttonDelay) < SETUPEXIT)
     {
         // Wacht tot de button wordt losgelaten
         yield(); // Laat andere taken toe terwijl we wachten
@@ -452,7 +454,7 @@ long getButtonDelay()
     {
         // Wacht tot de button wordt ingedrukt
         yield(); // Laat andere taken toe terwijl we wachten
-    }   
+    }
     return millis() - buttonDelay;
 }
 
@@ -470,18 +472,17 @@ void setupZandloper()
     while (blnSetupMode)
     {
         int milisPerMode = (millis() / 30) % 20;
-        if (milisPerMode >= 10) 
-            milisPerMode = 19 - milisPerMode; 
-
+        if (milisPerMode >= 10)
+            milisPerMode = 19 - milisPerMode;
 
         lc.setIntensity(0, milisPerMode);
         lc.setIntensity(1, milisPerMode);
 
-        displayMode(currentMode); 
-        long buttonDelay = getButtonDelay() ;
+        displayMode(currentMode);
+        long buttonDelay = getButtonDelay();
 
-        if (buttonDelay> SETUPEXIT)
-            blnSetupMode = false ;
+        if (buttonDelay > SETUPEXIT)
+            blnSetupMode = false;
 
         // Check of de button delay binnen de marge van de button delay ligt. Zo ja, ga naar de volgende mode.
         if (buttonDelay >= BUTTONDELAY - BUTTONMARGIN && buttonDelay <= BUTTONDELAY + BUTTONMARGIN)
@@ -494,8 +495,7 @@ void setupZandloper()
 
     // De instelling is nu gedaan
     resetTime();
-    alarmWentOff = true ;
-
+    alarmWentOff = true;
 }
 
 /**
@@ -526,7 +526,6 @@ void loop()
     {
         alarmWentOff = false;
     }
-
 
     if (digitalRead(PIN_BUTTON) == LOW)
     {
